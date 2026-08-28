@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PROTOTYPE — Astro content × DuckDB</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f4ef;
+      --panel: #fffefb;
+      --ink: #20231f;
+      --muted: #696d65;
+      --line: #d9d7cf;
+      --accent: #246b4a;
+      --accent-soft: #e3f0e9;
+      --danger: #a13d32;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 80px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(2rem, 5vw, 4rem); line-height: 1; letter-spacing: -0.045em; margin-bottom: 18px; }
+    h2 { font-size: 1.35rem; letter-spacing: -0.02em; }
+    h3 { font-size: 1rem; margin-bottom: 8px; }
+    code, textarea, .mono { font-family: var(--mono); }
+    a { color: var(--accent); }
+    .eyebrow { color: var(--accent); font: 700 .76rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .lede { max-width: 820px; font-size: 1.08rem; color: #44483f; }
+    .question {
+      margin: 28px 0 36px;
+      padding: 20px 22px;
+      border-left: 4px solid var(--accent);
+      background: var(--panel);
+      box-shadow: 0 1px 0 rgba(20, 30, 22, .06);
+    }
+    .question strong { display: block; margin-bottom: 5px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 20px; align-items: start; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+    .panel + .panel { margin-top: 20px; }
+    .status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .status-card { min-height: 98px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: #fff; }
+    .status-card span { display: block; color: var(--muted); font-size: .78rem; margin-bottom: 8px; }
+    .status-card strong { display: block; font-size: 1.05rem; overflow-wrap: anywhere; }
+    .status-card small { color: var(--muted); }
+    .notice { margin-top: 14px; border-radius: 9px; padding: 12px 14px; background: var(--accent-soft); color: #234d39; }
+    .notice.error { background: #f8e5e1; color: var(--danger); }
+    .launch-warning { margin: -18px 0 28px; border: 1px solid #e2b7ae; border-radius: 10px; padding: 14px 16px; background: #f8e5e1; color: var(--danger); }
+    .launch-warning strong { display: block; margin-bottom: 3px; }
+    .collection-list { margin: 14px 0 0; padding: 0; list-style: none; }
+    .collection-list li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+    button, .file-button {
+      border: 1px solid #b7b9b1;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 13px;
+      font: 650 .9rem/1.2 var(--sans);
+      cursor: pointer;
+    }
+    button:hover, .file-button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button:disabled { opacity: .43; cursor: not-allowed; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 9px; }
+    .file-button input { display: none; }
+    .query-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #1f2722;
+      color: #eff8f1;
+      font-size: .84rem;
+      line-height: 1.55;
+      tab-size: 2;
+    }
+    .results-wrap { margin-top: 14px; max-height: 330px; overflow: auto; border: 1px solid var(--line); border-radius: 9px; }
+    table { border-collapse: collapse; width: 100%; font-size: .84rem; background: #fff; }
+    th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { position: sticky; top: 0; background: #eef2ed; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+    td { font-family: var(--mono); }
+    .empty { padding: 28px; color: var(--muted); text-align: center; }
+    .walkthroughs { margin-top: 20px; }
+    .tabs { display: flex; gap: 7px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+    .tabs button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .scenario { padding-top: 18px; }
+    .steps { display: grid; gap: 10px; margin-top: 16px; }
+    .step { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 9px; padding: 10px; }
+    .step.done { background: var(--accent-soft); }
+    .step-number { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e7e7e1; font: 700 .78rem/1 var(--mono); }
+    .step.done .step-number { background: var(--accent); color: white; }
+    .footnote { margin-top: 24px; color: var(--muted); font-size: .84rem; }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      .status-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px) {
+      main { width: min(100% - 20px, 1120px); padding-top: 28px; }
+      .status-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 32px 1fr; }
+      .step button { grid-column: 2; justify-self: start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">PROTOTYPE · выбросить после ответа</p>
+    <h1>Astro content<br>под SQL-микроскопом</h1>
+    <p class="lede">Загрузите общий content store Astro, превратите внутренние коллекции в одну аналитическую таблицу и исследуйте их локально с DuckDB — без сервера и без отправки контента наружу.</p>
+
+    <div class="question">
+      <strong>Вопрос прототипа</strong>
+      Удобен ли шов <code>.astro/data-store.json → devalue.parse() → плоские строки → DuckDB</code> для инспекции всех коллекций, поиска расхождений схемы и связей между записями? Допущение: внутренний файл Astro — источник для dev-инструмента, а не стабильный публичный API.
+    </div>
+
+    <div class="launch-warning" id="launch-warning">
+      <strong>Интерактивный модуль не загружен</strong>
+      Не открывайте этот HTML напрямую. Выполните <code>pnpm prototype</code> и используйте адрес <code>http://127.0.0.1:5173/astro-duckdb-inspector.prototype.html</code>.
+    </div>
+
+    <div class="layout">
+      <div>
+        <section class="panel" aria-labelledby="state-title">
+          <h2 id="state-title">Текущее состояние</h2>
+          <div class="status-grid" id="status-grid"></div>
+          <div id="notice" class="notice">Начните с демонстрационных коллекций или выберите реальный <code>.astro/data-store.json</code>.</div>
+          <ul class="collection-list" id="collection-list"></ul>
+        </section>
+
+        <section class="panel" aria-labelledby="query-title">
+          <h2 id="query-title">SQL-запрос</h2>
+          <div class="query-toolbar" id="query-toolbar"></div>
+          <textarea id="sql" spellcheck="false" aria-label="SQL-запрос"></textarea>
+          <div class="button-row" style="margin-top:10px">
+            <button class="primary" id="run-query">Выполнить SQL</button>
+          </div>
+          <div class="results-wrap" id="results"><div class="empty">Результат появится здесь.</div></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="panel" aria-labelledby="actions-title">
+          <h2 id="actions-title">Свободная проверка</h2>
+          <p>Кнопки всегда доступны: попробуйте намеренно нарушить порядок.</p>
+          <div class="button-row">
+            <button id="load-sample">Загрузить пример Astro</button>
+            <label class="file-button">Выбрать data-store.json<input id="file-input" type="file" accept=".json,application/json"></label>
+            <button id="start-duckdb">Запустить DuckDB</button>
+            <button id="clear-state">Сбросить</button>
+          </div>
+        </section>
+
+        <section class="panel walkthroughs" aria-labelledby="walkthrough-title">
+          <h2 id="walkthrough-title">Пошаговые проверки</h2>
+          <div class="tabs" id="scenario-tabs" role="tablist"></div>
+          <div class="scenario" id="scenario"></div>
+        </section>
+
+        <p class="footnote">
+          Запуск: <code>pnpm prototype</code>. DuckDB-Wasm, worker и WASM отдаются локально через Vite; база и данные живут только в памяти вкладки. Meta-коллекции Astro (<code>meta:…</code>) адаптер намеренно не переносит в аналитическую таблицу.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import * as duckdb from "@duckdb/duckdb-wasm";
+    import duckdbWorkerUrl from "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url";
+    import duckdbWasmUrl from "@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url";
+    import { parse as parseDevalue, stringify as stringifyDevalue } from "devalue";
+
+    // ── PORTABLE LOGIC MODULE ──────────────────────────────────────────────
+    // This block is deliberately DOM-free. The adapter + reducer are the only
+    // pieces worth lifting out if the prototype validates the idea.
+    const InspectorLogic = (() => {
+      const initialState = () => ({
+        source: { kind: "none", name: "—", rows: [], collections: [] },
+        database: { status: "idle", label: "не запущена" },
+        query: { status: "idle", label: "запрос не выполнялся", columns: [], rows: [] },
+        lastChange: "Прототип готов к работе.",
+        error: null,
+      });
+
+      function reducer(state, action) {
+        switch (action.type) {
+          case "RESET":
+            return { ...initialState(), database: state.database.status === "ready" ? state.database : initialState().database };
+          case "SOURCE_LOADED":
+            return {
+              ...state,
+              source: action.source,
+              query: { status: "idle", label: "таблица обновлена; выполните запрос", columns: [], rows: [] },
+              lastChange: `Подготовлено строк: ${action.source.rows.length}.`,
+              error: null,
+            };
+          case "DB_LOADING":
+            return { ...state, database: { status: "loading", label: "загружается WebAssembly…" }, lastChange: "Запускаем локальный SQL-движок.", error: null };
+          case "DB_STAGE":
+            return { ...state, database: { status: "loading", label: action.label }, lastChange: action.label, error: null };
+          case "DB_READY":
+            return { ...state, database: { status: "ready", label: "готова в памяти" }, lastChange: "DuckDB готова к запросам.", error: null };
+          case "QUERY_RUNNING":
+            return { ...state, query: { ...state.query, status: "running", label: "выполняется…" }, lastChange: "DuckDB выполняет SQL.", error: null };
+          case "QUERY_DONE":
+            return { ...state, query: { status: "done", label: `${action.rows.length} строк в результате`, columns: action.columns, rows: action.rows }, lastChange: "Запрос выполнен.", error: null };
+          case "FAILED":
+            return { ...state, query: { ...state.query, status: "failed", label: "ошибка" }, lastChange: "Действие отклонено.", error: action.message };
+          default:
+            return state;
+        }
+      }
+
+      function jsonSafe(value, seen = new WeakSet()) {
+        if (typeof value === "bigint") return value.toString();
+        if (value instanceof Date) return value.toISOString();
+        if (value instanceof URL) return value.toString();
+        if (value instanceof Map) return Object.fromEntries([...value].map(([k, v]) => [String(k), jsonSafe(v, seen)]));
+        if (value instanceof Set) return [...value].map((item) => jsonSafe(item, seen));
+        if (Array.isArray(value)) return value.map((item) => jsonSafe(item, seen));
+        if (value && typeof value === "object") {
+          if (seen.has(value)) return "[Circular]";
+          seen.add(value);
+          return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, jsonSafe(item, seen)]));
+        }
+        return value;
+      }
+
+      function rowsFromAstroMap(store) {
+        if (!(store instanceof Map)) throw new Error("Ожидался корневой Map из Astro/devalue.");
+        const rows = [];
+        for (const [collection, entries] of store) {
+          if (String(collection).startsWith("meta:")) continue;
+          if (!(entries instanceof Map)) continue;
+          for (const [mapId, entry] of entries) {
+            const safeData = jsonSafe(entry?.data ?? {});
+            rows.push({
+              collection: String(collection),
+              id: String(entry?.id ?? mapId),
+              file_path: entry?.filePath ?? null,
+              data_json: JSON.stringify(safeData),
+              body: entry?.body ?? null,
+              digest: entry?.digest ?? null,
+            });
+          }
+        }
+        return rows;
+      }
+
+      function rowsFromText(text) {
+        let plain;
+        try { plain = JSON.parse(text); } catch { plain = null; }
+        if (Array.isArray(plain) && plain.every((row) => row && "collection" in row && "id" in row)) {
+          return plain.map((row) => ({
+            collection: String(row.collection),
+            id: String(row.id),
+            file_path: row.file_path ?? row.filePath ?? null,
+            data_json: typeof row.data_json === "string" ? row.data_json : JSON.stringify(jsonSafe(row.data ?? {})),
+            body: row.body ?? null,
+            digest: row.digest ?? null,
+          }));
+        }
+        return rowsFromAstroMap(parseDevalue(text));
+      }
+
+      function summarize(rows) {
+        const counts = new Map();
+        for (const row of rows) counts.set(row.collection, (counts.get(row.collection) ?? 0) + 1);
+        return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([name, count]) => ({ name, count }));
+      }
+
+      return { initialState, reducer, rowsFromAstroMap, rowsFromText, summarize };
+    })();
+    // ── END PORTABLE LOGIC MODULE ──────────────────────────────────────────
+
+    const QUERIES = {
+      overview: `SELECT
+  collection,
+  count(*)::INTEGER AS entries,
+  count(file_path)::INTEGER AS with_source_file
+FROM astro_content
+GROUP BY collection
+ORDER BY collection;`,
+      titles: `SELECT
+  collection,
+  id,
+  json_extract_string(data_json, '$.title') AS title,
+  json_extract_string(data_json, '$.publishedAt') AS published_at
+FROM astro_content
+WHERE json_extract_string(data_json, '$.title') IS NOT NULL
+ORDER BY collection, id;`,
+      schema: `SELECT
+  collection,
+  field,
+  count(*)::INTEGER AS present_in_entries
+FROM astro_content,
+UNNEST(json_keys(data_json::JSON)) AS fields(field)
+GROUP BY collection, field
+ORDER BY collection, present_in_entries DESC, field;`,
+      relations: `SELECT
+  posts.id AS post_id,
+  json_extract_string(posts.data_json, '$.title') AS post,
+  json_extract_string(authors.data_json, '$.name') AS author
+FROM astro_content AS posts
+LEFT JOIN astro_content AS authors
+  ON authors.collection = 'authors'
+ AND authors.id = json_extract_string(posts.data_json, '$.author')
+WHERE posts.collection = 'blog'
+ORDER BY post_id;`,
+    };
+
+    const SAMPLE_STORE = new Map([
+      ["authors", new Map([
+        ["ada", { id: "ada", data: { name: "Ada", team: "platform" }, filePath: "src/data/authors/ada.json" }],
+        ["lin", { id: "lin", data: { name: "Lin", team: "editorial", timezone: "UTC+8" }, filePath: "src/data/authors/lin.json" }],
+      ])],
+      ["blog", new Map([
+        ["duckdb-in-astro", { id: "duckdb-in-astro", data: { title: "DuckDB внутри Astro", author: "ada", publishedAt: "2026-08-01", tags: ["astro", "sql"], draft: false }, filePath: "src/data/blog/duckdb-in-astro.md", digest: "demo-a1" }],
+        ["content-audit", { id: "content-audit", data: { title: "Аудит контента", author: "lin", publishedAt: "2026-08-08", draft: true, seoTitle: "Content audit" }, filePath: "src/data/blog/content-audit.md", digest: "demo-b2" }],
+        ["orphan", { id: "orphan", data: { title: "Запись без автора", author: "missing", draft: false }, filePath: "src/data/blog/orphan.md", digest: "demo-c3" }],
+      ])],
+      ["docs", new Map([
+        ["getting-started", { id: "getting-started", data: { title: "Начало работы", section: "guide", order: 1 }, filePath: "src/data/docs/getting-started.mdx" }],
+        ["sql-recipes", { id: "sql-recipes", data: { title: "SQL-рецепты", section: "reference", order: 4, tags: ["sql"] }, filePath: "src/data/docs/sql-recipes.mdx" }],
+      ])],
+      ["meta:blog", new Map([["sync-token", "prototype-token"]])],
+    ]);
+
+    const SCENARIOS = [
+      {
+        id: "happy",
+        title: "Обзор",
+        description: "Проверяем основной путь: общий store превращается в строки, а SQL даёт перечень коллекций и объём каждой.",
+        watch: "Следите, что meta-коллекция не попадает в таблицу, а три обычные коллекции видны вместе.",
+        steps: [
+          ["Загрузить store-пример", () => loadSample()],
+          ["Запустить DuckDB", () => ensureDatabase()],
+          ["Посчитать коллекции", () => chooseAndRun("overview")],
+        ],
+      },
+      {
+        id: "drift",
+        title: "Разнобой полей",
+        description: "У записей одной коллекции не обязаны совпадать необязательные поля. Раскладываем JSON-ключи и считаем их присутствие.",
+        watch: "В blog поле title есть у всех, а tags, publishedAt и seoTitle — только у части записей.",
+        steps: [
+          ["Загрузить неоднородный пример", () => loadSample()],
+          ["Подготовить DuckDB", () => ensureDatabase()],
+          ["Показать покрытие полей", () => chooseAndRun("schema")],
+        ],
+      },
+      {
+        id: "guardrail",
+        title: "Неверный порядок",
+        description: "Проверяем защиту идеи: SQL до загрузки источника не должен создавать иллюзию пустого результата.",
+        watch: "Прототип явно отклонит запрос и объяснит, что сначала нужен content store.",
+        steps: [
+          ["Сбросить источник", () => resetWorkbench()],
+          ["Попробовать SQL слишком рано", () => chooseAndRun("overview")],
+          ["Восстановить правильный путь", async () => { await loadSample(); await ensureDatabase(); await chooseAndRun("overview"); }],
+        ],
+      },
+      {
+        id: "join",
+        title: "Связи",
+        description: "Проверяем, полезно ли держать разные коллекции в одной таблице: соединяем blog.author со справочником authors.",
+        watch: "У записи orphan ссылка ведёт на отсутствующего автора — LEFT JOIN оставит пустое имя и сделает проблему заметной.",
+        steps: [
+          ["Загрузить связанные коллекции", () => loadSample()],
+          ["Подготовить DuckDB", () => ensureDatabase()],
+          ["Соединить posts и authors", () => chooseAndRun("relations")],
+        ],
+      },
+    ];
+
+    let state = InspectorLogic.initialState();
+    let db = null;
+    let conn = null;
+    let activeScenario = 0;
+    let scenarioStep = 0;
+
+    const $ = (selector) => document.querySelector(selector);
+    const statusGrid = $("#status-grid");
+    const notice = $("#notice");
+    const collectionList = $("#collection-list");
+    const results = $("#results");
+    const sql = $("#sql");
+
+    function dispatch(action) {
+      state = InspectorLogic.reducer(state, action);
+      render();
+    }
+
+    function render() {
+      statusGrid.innerHTML = `
+        <div class="status-card"><span>Источник</span><strong>${escapeHtml(state.source.name)}</strong><small>${state.source.kind === "none" ? "ничего не загружено" : escapeHtml(state.source.kind)}</small></div>
+        <div class="status-card"><span>Строки контента</span><strong>${state.source.rows.length}</strong><small>${state.source.collections.length} коллекций</small></div>
+        <div class="status-card"><span>DuckDB</span><strong>${escapeHtml(state.database.label)}</strong><small>${state.database.status}</small></div>
+        <div class="status-card"><span>Последний запрос</span><strong>${escapeHtml(state.query.label)}</strong><small>${state.query.status}</small></div>`;
+      notice.className = `notice${state.error ? " error" : ""}`;
+      notice.textContent = state.error ?? state.lastChange;
+      collectionList.innerHTML = state.source.collections.map(({ name, count }) => `<li><span class="mono">${escapeHtml(name)}</span><strong>${count}</strong></li>`).join("");
+      renderResults();
+      renderScenario();
+    }
+
+    function renderResults() {
+      if (!state.query.columns.length) {
+        results.innerHTML = `<div class="empty">${state.query.status === "running" ? "DuckDB считает…" : "Результат появится здесь."}</div>`;
+        return;
+      }
+      const head = state.query.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+      const body = state.query.rows.map((row) => `<tr>${state.query.columns.map((column) => `<td>${escapeHtml(displayValue(row[column]))}</td>`).join("")}</tr>`).join("");
+      results.innerHTML = `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+
+    function renderScenarioTabs() {
+      $("#scenario-tabs").innerHTML = SCENARIOS.map((scenario, index) => `<button role="tab" aria-selected="${index === activeScenario}" data-scenario="${index}">${escapeHtml(scenario.title)}</button>`).join("");
+      document.querySelectorAll("[data-scenario]").forEach((button) => button.addEventListener("click", () => startScenario(Number(button.dataset.scenario))));
+    }
+
+    function renderScenario() {
+      const scenario = SCENARIOS[activeScenario];
+      $("#scenario").innerHTML = `
+        <p>${escapeHtml(scenario.description)}</p>
+        <p><strong>Что заметить:</strong> ${escapeHtml(scenario.watch)}</p>
+        <div class="steps">${scenario.steps.map(([label], index) => `
+          <div class="step ${index < scenarioStep ? "done" : ""}">
+            <span class="step-number">${index < scenarioStep ? "✓" : index + 1}</span>
+            <span>${escapeHtml(label)}</span>
+            <button data-step="${index}" ${index !== scenarioStep ? "disabled" : ""}>Выполнить</button>
+          </div>`).join("")}</div>`;
+      document.querySelectorAll("[data-step]").forEach((button) => button.addEventListener("click", () => performScenarioStep(Number(button.dataset.step))));
+    }
+
+    function startScenario(index) {
+      activeScenario = index;
+      scenarioStep = 0;
+      resetWorkbench();
+      renderScenarioTabs();
+      renderScenario();
+    }
+
+    async function performScenarioStep(index) {
+      if (index !== scenarioStep) return;
+      const button = document.querySelector(`[data-step="${index}"]`);
+      if (button) button.disabled = true;
+      try { await SCENARIOS[activeScenario].steps[index][1](); } finally {
+        scenarioStep += 1;
+        renderScenario();
+      }
+    }
+
+    function makeSource(rows, kind, name) {
+      return { kind, name, rows, collections: InspectorLogic.summarize(rows) };
+    }
+
+    async function loadSample() {
+      const serializedLikeAstro = stringifyDevalue(SAMPLE_STORE);
+      const rows = InspectorLogic.rowsFromText(serializedLikeAstro);
+      dispatch({ type: "SOURCE_LOADED", source: makeSource(rows, "Astro/devalue example", "демо data-store.json") });
+      if (conn) await loadRowsIntoDuckDB();
+    }
+
+    async function loadFile(file) {
+      try {
+        const rows = InspectorLogic.rowsFromText(await file.text());
+        if (!rows.length) throw new Error("В файле не найдено записей обычных коллекций.");
+        dispatch({ type: "SOURCE_LOADED", source: makeSource(rows, "локальный файл Astro", file.name) });
+        if (conn) await loadRowsIntoDuckDB();
+      } catch (error) {
+        dispatch({ type: "FAILED", message: `Не удалось разобрать store: ${error.message}` });
+      }
+    }
+
+    async function ensureDatabase() {
+      if (conn) {
+        if (state.source.rows.length) await loadRowsIntoDuckDB();
+        dispatch({ type: "DB_READY" });
+        return;
+      }
+      if (state.database.status === "loading") return;
+      let worker = null;
+      try {
+        dispatch({ type: "DB_LOADING" });
+        const bundle = {
+          mainWorker: duckdbWorkerUrl,
+          mainModule: duckdbWasmUrl,
+        };
+        dispatch({ type: "DB_STAGE", label: "инициализируем DuckDB…" });
+        worker = new Worker(bundle.mainWorker);
+        const workerFailure = new Promise((_, reject) => worker.addEventListener("error", () => reject(new Error("Web Worker не смог загрузить DuckDB bundle.")), { once: true }));
+        db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
+        await withTimeout(Promise.race([db.instantiate(bundle.mainModule), workerFailure]), 60000, "DuckDB-Wasm не инициализировалась за 60 секунд.");
+        conn = await db.connect();
+        if (state.source.rows.length) await loadRowsIntoDuckDB();
+        dispatch({ type: "DB_READY" });
+      } catch (error) {
+        worker?.terminate();
+        db = null;
+        conn = null;
+        dispatch({ type: "FAILED", message: `DuckDB не запустилась: ${error.message}` });
+      }
+    }
+
+    function withTimeout(promise, milliseconds, message) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(message)), milliseconds);
+        promise.then(
+          (value) => { clearTimeout(timer); resolve(value); },
+          (error) => { clearTimeout(timer); reject(error); },
+        );
+      });
+    }
+
+    async function loadRowsIntoDuckDB() {
+      if (!db || !conn || !state.source.rows.length) return;
+      const path = "astro-content.prototype.json";
+      try { await db.dropFile(path); } catch {}
+      await db.registerFileText(path, JSON.stringify(state.source.rows));
+      await conn.query(`CREATE OR REPLACE TABLE astro_content AS SELECT * FROM read_json_auto('${path}', format = 'array');`);
+    }
+
+    async function runQuery() {
+      if (!state.source.rows.length) {
+        dispatch({ type: "FAILED", message: "Сначала загрузите content store: пустой результат здесь был бы вводящим в заблуждение." });
+        return;
+      }
+      if (!conn) await ensureDatabase();
+      if (!conn) return;
+      try {
+        dispatch({ type: "QUERY_RUNNING" });
+        const table = await conn.query(sql.value);
+        const columns = table.schema.fields.map((field) => field.name);
+        const rows = table.toArray().map((row) => Object.fromEntries(columns.map((column) => [column, normalizeCell(row[column])])));
+        dispatch({ type: "QUERY_DONE", columns, rows });
+      } catch (error) {
+        dispatch({ type: "FAILED", message: `SQL отклонён: ${error.message}` });
+      }
+    }
+
+    async function chooseAndRun(name) {
+      sql.value = QUERIES[name];
+      await runQuery();
+    }
+
+    function resetWorkbench() {
+      dispatch({ type: "RESET" });
+      sql.value = QUERIES.overview;
+    }
+
+    function normalizeCell(value) {
+      if (typeof value === "bigint") return Number(value);
+      if (value == null) return null;
+      if (ArrayBuffer.isView(value)) return Array.from(value);
+      if (typeof value === "object" && value.toString) return value.toString();
+      return value;
+    }
+
+    function displayValue(value) {
+      if (value == null) return "∅";
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+    }
+
+    $("#query-toolbar").innerHTML = [
+      ["overview", "Коллекции"],
+      ["titles", "Все заголовки"],
+      ["schema", "Покрытие полей"],
+      ["relations", "Blog ↔ authors"],
+    ].map(([key, label]) => `<button data-query="${key}">${label}</button>`).join("");
+    document.querySelectorAll("[data-query]").forEach((button) => button.addEventListener("click", () => { sql.value = QUERIES[button.dataset.query]; }));
+    $("#load-sample").addEventListener("click", loadSample);
+    $("#start-duckdb").addEventListener("click", ensureDatabase);
+    $("#clear-state").addEventListener("click", resetWorkbench);
+    $("#run-query").addEventListener("click", runQuery);
+    $("#file-input").addEventListener("change", (event) => event.target.files[0] && loadFile(event.target.files[0]));
+
+    sql.value = QUERIES.overview;
+    $("#launch-warning").hidden = true;
+    renderScenarioTabs();
+    render();
+  </script>
+</body>
+</html>
