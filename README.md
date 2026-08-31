@@ -23,10 +23,10 @@ Requirements:
 
 ```sh
 pnpm install
-pnpm prototype
+pnpm --filter @astro-data-labs/duckdb-content-inspector dev
 ```
 
-Open <http://127.0.0.1:5173/astro-duckdb-inspector.prototype.html>. Do not open the HTML file directly because Vite supplies the JavaScript modules, Web Worker, and WASM asset.
+Open <http://127.0.0.1:5173/>. Do not open the HTML file directly because Vite supplies the JavaScript modules, Web Worker, and WASM asset.
 
 You can use the bundled sample or select a local `.astro/data-store.json` file. The database and imported data disappear when the tab closes.
 
@@ -43,7 +43,7 @@ Every non-meta entry becomes one row:
 | `body` | Body content when present |
 | `digest` | Astro digest when present |
 
-Keeping collection-specific fields in `data_json` makes unlike collections queryable together without inventing a universal schema. DuckDB's JSON functions expose individual fields when a query needs them.
+Keeping collection-specific fields in `data_json` makes unlike collections queryable together without inventing a universal schema. The Experiment also derives an `astro_content_fields` table for its field-coverage, title, and relationship queries. This keeps the built workflow offline because current DuckDB-Wasm releases fetch JSON support as a runtime extension.
 
 ## Current technical boundary
 
@@ -61,7 +61,7 @@ Relevant upstream documentation:
 
 Status: **exploring**.
 
-The useful unit is the adapter and state reducer inside `astro-duckdb-inspector.prototype.html`. The current single-file form keeps the experiment easy to run and discard. It is not a production inspector, CMS, editor, or stable Astro integration.
+The useful unit is the adapter and state reducer inside `experiments/duckdb-content-inspector/index.html`. The current single-file form keeps the experiment easy to run and discard. It is not a production inspector, CMS, editor, or stable Astro integration.
 
 The prototype currently uses:
 
@@ -69,11 +69,11 @@ The prototype currently uses:
 - `devalue` `5.3.2`
 - Vite `8.0.10`
 
-There is no automated test or production build command yet. Validation is interactive through the four included walkthroughs.
+The Experiment project has a static build and an unattended Chromium check. The interface also keeps four interactive walkthroughs for manual investigation.
 
 ## Repository guide
 
-- `astro-duckdb-inspector.prototype.html` contains the complete executable experiment.
+- `experiments/duckdb-content-inspector/` contains the complete executable Experiment project.
 - `CONTEXT.md` defines the project's domain vocabulary and scope.
 - `docs/agents/` records issue-tracker, triage, and domain-document conventions for coding agents.
 - `.agents/skills/triage/` contains the repository-local triage skill.
