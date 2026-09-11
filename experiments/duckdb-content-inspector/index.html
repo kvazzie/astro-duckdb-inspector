@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PROTOTYPE — Astro content × DuckDB</title>
+  <title>Astro content × DuckDB</title>
   <style>
     :root {
       color-scheme: light;
@@ -127,7 +127,7 @@
 
     <div class="launch-warning" id="launch-warning">
       <strong>Интерактивный модуль не загружен</strong>
-      Не открывайте этот HTML напрямую. Выполните <code>pnpm prototype</code> и используйте адрес <code>http://127.0.0.1:5173/astro-duckdb-inspector.prototype.html</code>.
+      Не открывайте этот HTML напрямую. Выполните <code>pnpm dev</code> и используйте адрес <code>http://127.0.0.1:5173/</code>.
     </div>
 
     <div class="layout">
@@ -169,7 +169,7 @@
         </section>
 
         <p class="footnote">
-          Запуск: <code>pnpm prototype</code>. DuckDB-Wasm, worker и WASM отдаются локально через Vite; база и данные живут только в памяти вкладки. Meta-коллекции Astro (<code>meta:…</code>) адаптер намеренно не переносит в аналитическую таблицу.
+          Запуск: <code>pnpm dev</code>. DuckDB-Wasm, worker и WASM отдаются локально через Vite; база и данные живут только в памяти вкладки. Meta-коллекции Astro (<code>meta:…</code>) адаптер намеренно не переносит в аналитическую таблицу.
         </p>
       </div>
     </div>
@@ -293,29 +293,47 @@ FROM astro_content
 GROUP BY collection
 ORDER BY collection;`,
       titles: `SELECT
-  collection,
-  id,
-  json_extract_string(data_json, '$.title') AS title,
-  json_extract_string(data_json, '$.publishedAt') AS published_at
-FROM astro_content
-WHERE json_extract_string(data_json, '$.title') IS NOT NULL
-ORDER BY collection, id;`,
+  content.collection,
+  content.id,
+  titles.value AS title,
+  published.value AS published_at
+FROM astro_content AS content
+JOIN astro_content_fields AS titles
+  ON titles.collection = content.collection
+ AND titles.id = content.id
+ AND titles.field = 'title'
+LEFT JOIN astro_content_fields AS published
+  ON published.collection = content.collection
+ AND published.id = content.id
+ AND published.field = 'publishedAt'
+ORDER BY content.collection, content.id;`,
       schema: `SELECT
   collection,
   field,
   count(*)::INTEGER AS present_in_entries
-FROM astro_content,
-UNNEST(json_keys(data_json::JSON)) AS fields(field)
+FROM astro_content_fields
 GROUP BY collection, field
 ORDER BY collection, present_in_entries DESC, field;`,
       relations: `SELECT
   posts.id AS post_id,
-  json_extract_string(posts.data_json, '$.title') AS post,
-  json_extract_string(authors.data_json, '$.name') AS author
+  post_titles.value AS post,
+  author_names.value AS author
 FROM astro_content AS posts
+JOIN astro_content_fields AS post_titles
+  ON post_titles.collection = posts.collection
+ AND post_titles.id = posts.id
+ AND post_titles.field = 'title'
+LEFT JOIN astro_content_fields AS post_authors
+  ON post_authors.collection = posts.collection
+ AND post_authors.id = posts.id
+ AND post_authors.field = 'author'
 LEFT JOIN astro_content AS authors
   ON authors.collection = 'authors'
- AND authors.id = json_extract_string(posts.data_json, '$.author')
+ AND authors.id = post_authors.value
+LEFT JOIN astro_content_fields AS author_names
+  ON author_names.collection = authors.collection
+ AND author_names.id = authors.id
+ AND author_names.field = 'name'
 WHERE posts.collection = 'blog'
 ORDER BY post_id;`,
     };
@@ -525,11 +543,41 @@ ORDER BY post_id;`,
     }
 
     async function loadRowsIntoDuckDB() {
-      if (!db || !conn || !state.source.rows.length) return;
-      const path = "astro-content.prototype.json";
-      try { await db.dropFile(path); } catch {}
-      await db.registerFileText(path, JSON.stringify(state.source.rows));
-      await conn.query(`CREATE OR REPLACE TABLE astro_content AS SELECT * FROM read_json_auto('${path}', format = 'array');`);
+      if (!conn || !state.source.rows.length) return;
+      await conn.query(`CREATE OR REPLACE TABLE astro_content (
+        collection VARCHAR,
+        id VARCHAR,
+        file_path VARCHAR,
+        data_json VARCHAR,
+        body VARCHAR,
+        digest VARCHAR
+      );`);
+      const contentInsert = await conn.prepare("INSERT INTO astro_content VALUES (?, ?, ?, ?, ?, ?)");
+      try {
+        for (const row of state.source.rows) {
+          await contentInsert.query(row.collection, row.id, row.file_path, row.data_json, row.body, row.digest);
+        }
+      } finally {
+        await contentInsert.close();
+      }
+
+      await conn.query(`CREATE OR REPLACE TABLE astro_content_fields (
+        collection VARCHAR,
+        id VARCHAR,
+        field VARCHAR,
+        value VARCHAR
+      );`);
+      const fieldInsert = await conn.prepare("INSERT INTO astro_content_fields VALUES (?, ?, ?, ?)");
+      try {
+        for (const row of state.source.rows) {
+          for (const [field, value] of Object.entries(JSON.parse(row.data_json))) {
+            const text = typeof value === "string" || value == null ? value : JSON.stringify(value);
+            await fieldInsert.query(row.collection, row.id, field, text);
+          }
+        }
+      } finally {
+        await fieldInsert.close();
+      }
     }
 
     async function runQuery() {

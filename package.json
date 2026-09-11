@@ -1,15 +1,10 @@
 {
-  "name": "astro-duckdb-inspector-prototype",
+  "name": "astro-data-labs",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "prototype": "vite --host 127.0.0.1 --open /astro-duckdb-inspector.prototype.html"
-  },
-  "dependencies": {
-    "@duckdb/duckdb-wasm": "1.33.1-dev57.0",
-    "devalue": "5.3.2"
-  },
-  "devDependencies": {
-    "vite": "8.0.10"
+  "packageManager": "pnpm@10.29.3",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@playwright/browser-chromium"
+    ]
   }
 }
