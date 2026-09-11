@@ -1,5 +1,7 @@
 # Astro content under a SQL microscope
 
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/kvazzie/astro-duckdb-inspector?utm_source=oss&utm_medium=github&utm_campaign=kvazzie%2Fastro-duckdb-inspector&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 An executable browser prototype that turns Astro content collection data into one DuckDB table for local SQL inspection.
 
 The experiment tests one narrow question: is Astro's generated content store a useful seam for inspecting collections, spotting schema drift, and checking relationships between entries before a project needs a separate database?
