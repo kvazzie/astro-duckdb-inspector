@@ -13,6 +13,17 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 The `gh` CLI infers the repository from `git remote -v`.
 
+## Contribution routes
+
+Structured issue forms live under `.github/ISSUE_TEMPLATE/`:
+
+- **Experiment request**: proposes a new Experiment. Ask for the Astro data problem or opportunity, proposed response, observable result, trade-offs, and non-goals.
+- **Feature request**: changes repository functionality or an existing Experiment. It is not a new Experiment proposal.
+
+Both forms open ordinary Issues with `needs-triage`. They are not Roadmap items until maintainers select them into the GitHub Project.
+
+Pull request guidance lives in `.github/pull_request_template.md`. It asks for purpose, run instructions, included sample, observations, and remaining limitations.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** Set this to `yes` if the repo later treats external pull requests as feature requests.
