@@ -1,0 +1,62 @@
+name: Feature request
+description: Request a change to repository functionality or an existing Experiment.
+title: "Feature: "
+labels:
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the change improves **repository functionality** or an **existing Experiment**.
+
+        A Feature request is an ordinary Issue until maintainers accept it onto the Roadmap.
+        Filing this form does not select the work for implementation.
+
+        Maintainers apply `lab-infrastructure` or `experiment` during triage.
+        If you want to propose a new Experiment, use an Experiment request instead.
+  - type: dropdown
+    id: change-target
+    attributes:
+      label: What does this change?
+      description: Choose the closest match. A Feature request is not a proposal for a new Experiment.
+      options:
+        - Repository tooling, automation, or documentation
+        - An existing Experiment
+        - Lab index or contribution surfaces
+    validations:
+      required: true
+  - type: input
+    id: existing-experiment
+    attributes:
+      label: Existing Experiment name
+      description: Required when the change targets an existing Experiment. Leave blank for repository-wide work.
+      placeholder: duckdb-content-inspector
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is broken, missing, or hard to use today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed change
+      description: What should change in the repository or existing Experiment?
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: How will we know it worked?
+      description: What observable result or check would confirm the change?
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What should this change deliberately avoid?
+      placeholder: Example: do not turn this into a new Experiment or a public package.
+    validations:
+      required: true

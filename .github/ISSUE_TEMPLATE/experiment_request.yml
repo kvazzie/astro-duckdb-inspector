@@ -1,0 +1,56 @@
+name: Experiment request
+description: Propose a new Experiment for the Lab index.
+title: "Experiment: "
+labels:
+  - needs-triage
+  - experiment
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose a **new** Experiment.
+
+        An Experiment request is an ordinary Issue until maintainers accept it onto the Roadmap.
+        Filing this form does not select the work for implementation.
+
+        If you want to change repository tooling or an existing Experiment, use a Feature request instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Astro data problem or opportunity
+      description: What concrete Astro data problem or opportunity should this Experiment investigate?
+      placeholder: Example: teams need a reversible path between Drizzle schemas and Astro Content Collections without picking a permanent source of truth first.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-response
+    attributes:
+      label: Proposed response
+      description: What executable approach should the Experiment try?
+      placeholder: Example: build a small pipeline that can load the same records from a Drizzle schema or from local content files and compare the results.
+    validations:
+      required: true
+  - type: textarea
+    id: observable-result
+    attributes:
+      label: Observable result
+      description: What should a reader be able to run or see that shows whether the approach works?
+      placeholder: Example: a local demo that imports one fixture both ways and reports matching row counts and field coverage.
+    validations:
+      required: true
+  - type: textarea
+    id: trade-offs
+    attributes:
+      label: Trade-offs
+      description: What costs, risks, or limits do you already expect?
+      placeholder: Example: the first version may only cover a narrow schema subset and may not handle migrations.
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What should this Experiment deliberately avoid becoming?
+      placeholder: Example: not a production CMS, not a recommended universal architecture, not an npm package incubator.
+    validations:
+      required: true
