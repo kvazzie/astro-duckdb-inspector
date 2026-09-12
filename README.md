@@ -28,11 +28,32 @@ Entering the shell restores the agent skills listed in `skills-lock.json`.
 
 The interface is currently in Russian. The code and repository documentation are in English.
 
-## Run it
+## Experiment contract
+
+Every Experiment project under `experiments/` implements `dev`, `build`, and `check`. Root commands discover those projects without experiment-specific shortcuts.
 
 ```sh
 pnpm install
+pnpm experiment duckdb-content-inspector
+pnpm build
+pnpm check
+```
+
+`pnpm experiment <name>` starts that project's `dev` command. Unknown names fail with the available Experiment list. `pnpm build` and `pnpm check` walk every Experiment project. Root `check` fails when a project omits `dev`, `build`, or `check`, or when either `build` or `check` fails.
+
+Native pnpm filtering still works when you want a single package without the dispatcher:
+
+```sh
 pnpm --filter @astro-data-labs/duckdb-content-inspector dev
+pnpm --filter @astro-data-labs/duckdb-content-inspector build
+pnpm --filter @astro-data-labs/duckdb-content-inspector check
+```
+
+## Run the DuckDB experiment
+
+```sh
+pnpm install
+pnpm experiment duckdb-content-inspector
 ```
 
 Open <http://127.0.0.1:5173/>. Do not open the HTML file directly because Vite supplies the JavaScript modules, Web Worker, and WASM asset.
@@ -83,6 +104,8 @@ The Experiment project has a static build and an unattended Chromium check. The 
 ## Repository guide
 
 - `experiments/duckdb-content-inspector/` contains the complete executable Experiment project.
+- `scripts/experiment.mjs` is the neutral Experiment dispatcher. `scripts/build-experiments.mjs` and `scripts/check-experiments.mjs` enforce the root contract.
+- `.github/workflows/experiment-contract.yml` runs the same root `pnpm build` and `pnpm check` commands contributors use locally.
 - `CONTEXT.md` defines the project's domain vocabulary and scope.
 - `docs/agents/` records issue-tracker, triage, and domain-document conventions for coding agents.
 - `skills-lock.json` records the project-local agent skills restored by `devenv shell`.

@@ -2,6 +2,11 @@
   "name": "astro-data-labs",
   "private": true,
   "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "experiment": "node scripts/experiment.mjs",
+    "build": "node scripts/build-experiments.mjs",
+    "check": "node scripts/check-experiments.mjs"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@playwright/browser-chromium"
