@@ -6,6 +6,18 @@ An executable browser prototype that turns Astro content collection data into on
 
 The experiment tests one narrow question: is Astro's generated content store a useful seam for inspecting collections, spotting schema drift, and checking relationships between entries before a project needs a separate database?
 
+## Development
+
+Git and [devenv](https://devenv.sh/) must be installed on the host system.
+
+Enter the development shell with:
+
+```sh
+devenv shell
+```
+
+Entering the shell restores the agent skills listed in `skills-lock.json`.
+
 ## What it demonstrates
 
 - Parses an Astro-style `devalue` store or a normalized JSON row array.
@@ -17,11 +29,6 @@ The experiment tests one narrow question: is Astro's generated content store a u
 The interface is currently in Russian. The code and repository documentation are in English.
 
 ## Run it
-
-Requirements:
-
-- Node.js 20.19 or newer, or Node.js 22.12 or newer
-- pnpm
 
 ```sh
 pnpm install
@@ -78,7 +85,7 @@ The Experiment project has a static build and an unattended Chromium check. The 
 - `experiments/duckdb-content-inspector/` contains the complete executable Experiment project.
 - `CONTEXT.md` defines the project's domain vocabulary and scope.
 - `docs/agents/` records issue-tracker, triage, and domain-document conventions for coding agents.
-- `.agents/skills/triage/` contains the repository-local triage skill.
+- `skills-lock.json` records the project-local agent skills restored by `devenv shell`.
 
 ## Contributing
 
