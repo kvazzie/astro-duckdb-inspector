@@ -15,8 +15,11 @@ pnpm dev
 From the repository root:
 
 ```sh
+pnpm experiment duckdb-content-inspector
 pnpm --filter @astro-data-labs/duckdb-content-inspector dev
 ```
+
+Either command starts the local Vite development server. The first is the Lab Experiment dispatcher. The second is native pnpm filtering.
 
 Open <http://127.0.0.1:5173/>. Use the bundled sample or select a local `.astro/data-store.json` file.
 
