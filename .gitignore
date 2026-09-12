@@ -2,3 +2,20 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Agent skills are external dependencies restored from `skills-lock.json`.
+# The lockfile is tracked. Installed skill trees are not.
+/.agents/skills/*
+
+# To track a hand-written skill, add both rules below with its real directory
+# name. Git must unignore the directory and its contents separately.
+# !/.agents/skills/<skill-name>/
+# !/.agents/skills/<skill-name>/**
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv/
