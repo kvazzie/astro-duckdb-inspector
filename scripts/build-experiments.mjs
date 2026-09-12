@@ -13,7 +13,7 @@ if (experiments.length === 0) {
 }
 
 for (const experiment of experiments) {
-  assertExperimentScripts(experiment, ["build"]);
+  assertExperimentScripts(experiment);
   console.log(`Building Experiment ${experiment.name} (${experiment.packageName})`);
   await runExperimentScript(experiment, "build");
 }
